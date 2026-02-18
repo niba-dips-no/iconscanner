@@ -196,12 +196,6 @@ async function isLikelyIcon(node) {
   // Check if it's a component or instance (icons are often components)
   const isComponentOrInstance = node.type === 'COMPONENT' || node.type === 'INSTANCE' || node.type === 'COMPONENT_SET';
 
-  // Check if it's a vector or boolean operation (common for icon graphics)
-  const isVectorType = node.type === 'VECTOR' || node.type === 'BOOLEAN_OPERATION' || node.type === 'STAR' || node.type === 'POLYGON' || node.type === 'ELLIPSE' || node.type === 'LINE';
-
-  // Check if it's a frame/group with icon-like characteristics
-  const isFrameOrGroup = node.type === 'FRAME' || node.type === 'GROUP';
-
   // Size-based heuristics (icons are typically small and square-ish)
   const maxSize = 200; // pixels
   const minSize = 8; // pixels
@@ -212,13 +206,43 @@ async function isLikelyIcon(node) {
                              width >= minSize && height >= minSize &&
                              aspectRatio >= 0.5 && aspectRatio <= 2;
 
-  // Combine criteria
+  // Name matches icon pattern -> icon
   if (nameMatchesPattern) {
     return true;
   }
 
+  // Small component/instance -> icon
   if (isComponentOrInstance && isSmallAndSquarish) {
     return true;
+  }
+
+  // Instance from a remote library that is small and squarish -> icon
+  // This catches material icons, font awesome, etc. that don't have "icon" in name
+  if (node.type === 'INSTANCE') {
+    try {
+      const mainComp = await node.getMainComponentAsync();
+      if (mainComp && mainComp.remote && isSmallAndSquarish) {
+        return true;
+      }
+    } catch (e) {
+      // fallback: already covered by isComponentOrInstance check above
+    }
+  }
+
+  // Frame/group that contains only vectors and is small -> likely an icon
+  if ((node.type === 'FRAME' || node.type === 'GROUP') && isSmallAndSquarish && 'children' in node) {
+    const children = node.children;
+    if (children.length > 0 && children.length <= 20) {
+      const allVectorLike = children.every(c =>
+        c.type === 'VECTOR' || c.type === 'BOOLEAN_OPERATION' ||
+        c.type === 'STAR' || c.type === 'POLYGON' ||
+        c.type === 'ELLIPSE' || c.type === 'LINE' ||
+        c.type === 'RECTANGLE' || c.type === 'FRAME' || c.type === 'GROUP'
+      );
+      if (allVectorLike) {
+        return true;
+      }
+    }
   }
 
   return false;
