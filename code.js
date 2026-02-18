@@ -38,6 +38,26 @@ figma.ui.onmessage = async (msg) => {
       // Node not found - it might be in an external library
       figma.notify('Could not find node. It may be in an external library file.', { error: true });
     }
+  } else if (msg.type === 'select-nodes') {
+    const nodes = [];
+    for (const id of msg.ids) {
+      const node = await figma.getNodeByIdAsync(id);
+      if (node) nodes.push(node);
+    }
+    if (nodes.length > 0) {
+      // Navigate to the page of the first node
+      let current = nodes[0].parent;
+      while (current) {
+        if (current.type === 'PAGE') {
+          figma.currentPage = current;
+          break;
+        }
+        current = current.parent;
+      }
+      figma.currentPage.selection = nodes;
+      figma.viewport.scrollAndZoomIntoView(nodes);
+      figma.notify(`Selected ${nodes.length} icon${nodes.length > 1 ? 's' : ''}`);
+    }
   }
 };
 

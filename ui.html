@@ -236,6 +236,12 @@
     .link-button.copy:hover {
       background: #218838;
     }
+    .link-button.select-all-btn {
+      background: #6f42c1;
+    }
+    .link-button.select-all-btn:hover {
+      background: #5a32a3;
+    }
     .link-button.copied {
       background: #5cb85c;
       pointer-events: none;
@@ -469,8 +475,21 @@
         return a.name.localeCompare(b.name);
       });
 
+      // Build a group key for each icon (same main component + page = same group)
+      const groupKey = (icon) => {
+        const key = icon.linkedFrom ? icon.linkedFrom.id : icon.name;
+        return key + '::' + icon.page;
+      };
+
+      // Count similar icons per group
+      const groupCounts = {};
+      sortedIcons.forEach(icon => {
+        const k = groupKey(icon);
+        groupCounts[k] = (groupCounts[k] || 0) + 1;
+      });
+
       iconList.innerHTML = sortedIcons.map(icon => `
-        <div class="icon-item" data-id="${icon.id}" data-library="${escapeHtml(icon.library || '')}" data-name="${escapeHtml(icon.name.toLowerCase())}" data-colors="${(icon.colors || []).join(',')}">
+        <div class="icon-item" data-id="${icon.id}" data-library="${escapeHtml(icon.library || '')}" data-name="${escapeHtml(icon.name.toLowerCase())}" data-colors="${(icon.colors || []).join(',')}" data-group-key="${escapeHtml(groupKey(icon))}">
           <div class="icon-name">
             ${escapeHtml(icon.name)}
             ${icon.library ? `<span class="library-badge ${icon.linkedFrom?.isRemote ? 'remote' : 'local'}">${escapeHtml(icon.library)}</span>` : ''}
@@ -513,6 +532,7 @@
           ` : ''}
           <div style="margin-top: 6px;">
             <button class="link-button copy" data-link="${icon.link}">Copy Link</button>
+            ${groupCounts[groupKey(icon)] > 1 ? `<button class="link-button select-all-btn" data-group-key="${escapeHtml(groupKey(icon))}">Select All on Page (${groupCounts[groupKey(icon)]})</button>` : ''}
           </div>
         </div>
       `).join('');
@@ -533,6 +553,16 @@
         el.onclick = (e) => {
           e.stopPropagation();
           parent.postMessage({ pluginMessage: { type: 'select-node', id: el.dataset.selectNode } }, '*');
+        };
+      });
+
+      // Add "Select All on Page" handlers
+      document.querySelectorAll('.select-all-btn').forEach(button => {
+        button.onclick = (e) => {
+          e.stopPropagation();
+          const key = button.dataset.groupKey;
+          const ids = Array.from(document.querySelectorAll(`.icon-item[data-group-key="${CSS.escape(key)}"]`)).map(el => el.dataset.id);
+          parent.postMessage({ pluginMessage: { type: 'select-nodes', ids } }, '*');
         };
       });
 
