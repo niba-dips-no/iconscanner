@@ -197,6 +197,25 @@
       padding: 20px;
       color: #999;
     }
+    .resize-handle {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      width: 16px;
+      height: 16px;
+      cursor: nwse-resize;
+      z-index: 100;
+    }
+    .resize-handle::after {
+      content: '';
+      position: absolute;
+      right: 3px;
+      bottom: 3px;
+      width: 8px;
+      height: 8px;
+      border-right: 2px solid #ccc;
+      border-bottom: 2px solid #ccc;
+    }
   </style>
 </head>
 <body>
@@ -229,6 +248,7 @@
   </div>
 
   <div id="icon-list" class="icon-list"></div>
+  <div class="resize-handle" id="resize-handle"></div>
 
   <script>
     const scanPageBtn = document.getElementById('scan-page');
@@ -434,6 +454,31 @@
         };
       });
     }
+
+    // Resize handle
+    const resizeHandle = document.getElementById('resize-handle');
+    let isResizing = false;
+    let startX, startY, startWidth, startHeight;
+
+    resizeHandle.onmousedown = (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startWidth = window.innerWidth;
+      startHeight = window.innerHeight;
+      e.preventDefault();
+    };
+
+    document.onmousemove = (e) => {
+      if (!isResizing) return;
+      const width = Math.max(300, startWidth + (e.clientX - startX));
+      const height = Math.max(200, startHeight + (e.clientY - startY));
+      parent.postMessage({ pluginMessage: { type: 'resize', width, height } }, '*');
+    };
+
+    document.onmouseup = () => {
+      isResizing = false;
+    };
 
     function escapeHtml(text) {
       const div = document.createElement('div');

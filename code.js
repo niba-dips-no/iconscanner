@@ -1,5 +1,5 @@
 // Show the plugin UI
-figma.showUI(__html__, { width: 400, height: 600, resize: true });
+figma.showUI(__html__, { width: 400, height: 600 });
 
 // Handle messages from the UI
 figma.ui.onmessage = async (msg) => {
@@ -13,6 +13,8 @@ figma.ui.onmessage = async (msg) => {
       allIcons.push(...icons);
     }
     figma.ui.postMessage({ type: 'scan-results', icons: allIcons });
+  } else if (msg.type === 'resize') {
+    figma.ui.resize(msg.width, msg.height);
   } else if (msg.type === 'select-node') {
     const node = await figma.getNodeByIdAsync(msg.id);
     if (node) {
@@ -60,34 +62,24 @@ async function scanForIcons(page) {
       };
 
       // If it's an instance, get the main component information
-      if (node.type === 'INSTANCE' && node.mainComponent) {
-        const mainComp = node.mainComponent;
+      if (node.type === 'INSTANCE') {
+        let mainComp = null;
+        try {
+          mainComp = await node.getMainComponentAsync();
+        } catch (e) {
+          mainComp = node.mainComponent || null;
+        }
+
+        if (!mainComp) {
+          icons.push(iconData);
+          return;
+        }
 
         // Get library name
         let libraryName = 'Local Components';
 
-        if (mainComp.remote && mainComp.key) {
-          // For remote components, use importComponentByKeyAsync to get library info
-          try {
-            const importedNode = await figma.importComponentByKeyAsync(mainComp.key);
-
-            // Now walk up from the imported node to get the document name
-            let current = importedNode;
-            while (current.parent) {
-              current = current.parent;
-            }
-
-            // The root should be the DOCUMENT with the library file name
-            if (current.type === 'DOCUMENT' && current.name) {
-              libraryName = current.name;
-            } else {
-              libraryName = 'External Library';
-            }
-
-          } catch (e) {
-            libraryName = 'External Library';
-            console.log('Error getting library name:', e);
-          }
+        if (mainComp.remote) {
+          libraryName = 'External Library';
         }
 
         iconData.linkedFrom = {
