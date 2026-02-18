@@ -45,7 +45,7 @@ figma.ui.onmessage = async (msg) => {
 async function scanForIcons(page) {
   const icons = [];
 
-  async function traverse(node, parentName = null) {
+  async function traverse(node, parentName = null, parentId = null) {
     // Check if this node is likely an icon based on various criteria
     const isIcon = await isLikelyIcon(node);
 
@@ -57,7 +57,9 @@ async function scanForIcons(page) {
         width: Math.round(node.width),
         height: Math.round(node.height),
         page: page.name,
+        pageId: page.id,
         parent: parentName,
+        parentId: parentId,
         link: `https://www.figma.com/file/${figma.fileKey}?node-id=${encodeURIComponent(node.id)}`,
         colors: extractColors(node, 5)
       };
@@ -103,7 +105,7 @@ async function scanForIcons(page) {
     // Traverse children if the node has them
     if ('children' in node) {
       for (const child of node.children) {
-        await traverse(child, node.name);
+        await traverse(child, node.name, node.id);
       }
     }
   }

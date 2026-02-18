@@ -198,6 +198,13 @@
     .icon-label {
       color: #999;
     }
+    .clickable-value {
+      color: #0d99ff;
+      cursor: pointer;
+    }
+    .clickable-value:hover {
+      text-decoration: underline;
+    }
     .link-button {
       display: inline-flex;
       align-items: center;
@@ -479,12 +486,12 @@
             </div>
             <div class="icon-detail-row">
               <span class="icon-label">Page:</span>
-              <span>${escapeHtml(icon.page)}</span>
+              <span class="clickable-value" data-select-node="${icon.pageId}">${escapeHtml(icon.page)}</span>
             </div>
             ${icon.parent ? `
             <div class="icon-detail-row">
               <span class="icon-label">Parent:</span>
-              <span>${escapeHtml(icon.parent)}</span>
+              <span class="clickable-value" data-select-node="${icon.parentId}">${escapeHtml(icon.parent)}</span>
             </div>
             ` : ''}
             ${icon.colors && icon.colors.length > 0 ? `
@@ -510,15 +517,22 @@
         </div>
       `).join('');
 
-      // Add click handlers to select nodes (but not on buttons/links)
+      // Add click handlers to select nodes (but not on buttons/links/clickable values)
       document.querySelectorAll('.icon-item').forEach(item => {
         item.onclick = (e) => {
-          // Don't trigger selection if clicking on a button or link
-          if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.closest('a') || e.target.closest('button')) {
+          if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.closest('a') || e.target.closest('button') || e.target.closest('.clickable-value')) {
             return;
           }
           const id = item.dataset.id;
           parent.postMessage({ pluginMessage: { type: 'select-node', id: id } }, '*');
+        };
+      });
+
+      // Add Page/Parent click handlers
+      document.querySelectorAll('.clickable-value[data-select-node]').forEach(el => {
+        el.onclick = (e) => {
+          e.stopPropagation();
+          parent.postMessage({ pluginMessage: { type: 'select-node', id: el.dataset.selectNode } }, '*');
         };
       });
 
