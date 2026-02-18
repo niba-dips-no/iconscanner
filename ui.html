@@ -108,14 +108,19 @@
       cursor: pointer;
       padding: 0;
       background: none;
-      transition: border-color 0.15s;
+      opacity: 0.4;
+      transition: all 0.15s;
     }
     .color-swatch:hover {
-      border-color: #999;
+      opacity: 0.8;
     }
     .color-swatch.active {
+      opacity: 1;
       border-color: #0d99ff;
       box-shadow: 0 0 0 1px #0d99ff;
+    }
+    .color-filter:not(:has(.color-swatch.active)) .color-swatch {
+      opacity: 1;
     }
     .color-swatch-all {
       font-size: 10px;
@@ -337,7 +342,7 @@
     const colorFilter = document.getElementById('color-filter');
 
     let allIcons = [];
-    let selectedColor = 'all';
+    let selectedColors = new Set(); // empty = all colors shown
 
     scanPageBtn.onclick = () => {
       parent.postMessage({ pluginMessage: { type: 'scan-page' } }, '*');
@@ -377,7 +382,7 @@
         const itemColors = item.dataset.colors || '';
         const matchesLibrary = selectedLibrary === 'all' || itemLibrary === selectedLibrary;
         const matchesSearch = !searchTerm || itemName.includes(searchTerm);
-        const matchesColor = selectedColor === 'all' || itemColors.split(',').includes(selectedColor);
+        const matchesColor = selectedColors.size === 0 || (itemColors && itemColors.split(',').some(c => selectedColors.has(c)));
 
         if (matchesLibrary && matchesSearch && matchesColor) {
           item.style.display = '';
@@ -443,22 +448,51 @@
         }
       });
 
-      selectedColor = 'all';
+      selectedColors = new Set();
       if (allColors.size > 0) {
         colorFilter.style.display = 'flex';
         const sortedColors = Array.from(allColors.entries()).sort((a, b) => b[1] - a[1]);
         colorFilter.innerHTML = '<span class="color-filter-label">Colors:</span>' +
-          '<button class="color-swatch-all active" data-color="all">All</button>' +
+          '<button class="color-swatch-all active" data-action="all">All</button>' +
+          '<button class="color-swatch-all" data-action="none">None</button>' +
           sortedColors.map(([hex, count]) =>
             `<button class="color-swatch" data-color="${hex}" style="background-color: ${hex};" title="${hex} (${count})"></button>`
           ).join('');
 
+        function updateColorButtonStates() {
+          const allBtn = colorFilter.querySelector('[data-action="all"]');
+          const noneBtn = colorFilter.querySelector('[data-action="none"]');
+          allBtn.classList.toggle('active', selectedColors.size === 0);
+          noneBtn.classList.remove('active');
+          colorFilter.querySelectorAll('.color-swatch[data-color]').forEach(b => {
+            b.classList.toggle('active', selectedColors.has(b.dataset.color));
+          });
+        }
+
         colorFilter.onclick = (e) => {
-          const btn = e.target.closest('[data-color]');
+          const btn = e.target.closest('[data-action], [data-color]');
           if (!btn) return;
-          selectedColor = btn.dataset.color;
-          colorFilter.querySelectorAll('.color-swatch, .color-swatch-all').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
+
+          if (btn.dataset.action === 'all') {
+            selectedColors = new Set();
+          } else if (btn.dataset.action === 'none') {
+            selectedColors = new Set(['__none__']);
+          } else if (btn.dataset.color) {
+            if (selectedColors.size === 0) {
+              // Switching from "all" to specific: select only this one
+              selectedColors = new Set([btn.dataset.color]);
+            } else {
+              selectedColors.delete('__none__');
+              if (selectedColors.has(btn.dataset.color)) {
+                selectedColors.delete(btn.dataset.color);
+              } else {
+                selectedColors.add(btn.dataset.color);
+              }
+              if (selectedColors.size === 0) selectedColors = new Set();
+            }
+          }
+
+          updateColorButtonStates();
           filterIcons();
         };
       } else {
