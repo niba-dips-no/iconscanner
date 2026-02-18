@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Icon Scanner</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 12px;
+      background: #ffffff;
+    }
+    h2 {
+      margin: 0 0 16px 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .controls {
+      margin-bottom: 16px;
+      display: flex;
+      gap: 8px;
+    }
+    button {
+      padding: 8px 16px;
+      background: #0d99ff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    button:hover {
+      background: #0b7fd9;
+    }
+    button:active {
+      background: #0969b8;
+    }
+    button.secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    button.secondary:hover {
+      background: #e0e0e0;
+    }
+    .stats {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #f7f7f7;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #666;
+    }
+    .filter-section {
+      margin-bottom: 16px;
+    }
+    .filter-section label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #666;
+    }
+    .filter-section select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      font-size: 12px;
+      background: white;
+      cursor: pointer;
+    }
+    .search-input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      font-size: 12px;
+      background: white;
+      margin-bottom: 8px;
+    }
+    .search-input:focus {
+      outline: none;
+      border-color: #0d99ff;
+    }
+    .icon-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .icon-item {
+      padding: 12px;
+      background: #f9f9f9;
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .icon-item:hover {
+      background: #f0f0f0;
+      border-color: #0d99ff;
+    }
+    .icon-name {
+      font-weight: 500;
+      margin-bottom: 4px;
+      color: #333;
+    }
+    .library-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      background: #e3f2fd;
+      color: #1565c0;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .library-badge.remote {
+      background: #f3e5f5;
+      color: #6a1b9a;
+    }
+    .library-badge.local {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    .icon-details {
+      font-size: 11px;
+      color: #666;
+      line-height: 1.5;
+    }
+    .icon-detail-row {
+      display: flex;
+      gap: 4px;
+    }
+    .icon-label {
+      color: #999;
+    }
+    .link-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      background: #0d99ff;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-size: 10px;
+      margin-top: 6px;
+      margin-right: 4px;
+      cursor: pointer;
+      border: none;
+      font-weight: 500;
+    }
+    .link-button:hover {
+      background: #0b7fd9;
+    }
+    .link-button.secondary {
+      background: #666;
+    }
+    .link-button.secondary:hover {
+      background: #555;
+    }
+    .link-button.copy {
+      background: #28a745;
+    }
+    .link-button.copy:hover {
+      background: #218838;
+    }
+    .link-button.copied {
+      background: #5cb85c;
+      pointer-events: none;
+    }
+    .linked-from {
+      margin-top: 6px;
+      padding: 6px 8px;
+      background: #fff3cd;
+      border-left: 3px solid #ffc107;
+      border-radius: 3px;
+      font-size: 10px;
+    }
+    .linked-from-label {
+      color: #856404;
+      font-weight: 600;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999;
+    }
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <h2>Icon Scanner</h2>
+
+  <div class="controls">
+    <button id="scan-page">Scan Current Page</button>
+    <button id="scan-document" class="secondary">Scan Document</button>
+  </div>
+
+  <div id="stats" class="stats" style="display: none;">
+    <div><strong>Total icons found:</strong> <span id="icon-count">0</span></div>
+    <div><strong>Showing:</strong> <span id="visible-count">0</span></div>
+  </div>
+
+  <div id="filter-section" class="filter-section" style="display: none;">
+    <input type="text" id="search-input" class="search-input" placeholder="Search icons by name...">
+    <label for="library-filter">Filter by Library:</label>
+    <select id="library-filter">
+      <option value="all">All Libraries</option>
+    </select>
+  </div>
+
+  <div id="loading" class="loading" style="display: none;">
+    Scanning for icons...
+  </div>
+
+  <div id="empty" class="empty-state">
+    Click a button above to scan for icons
+  </div>
+
+  <div id="icon-list" class="icon-list"></div>
+
+  <script>
+    const scanPageBtn = document.getElementById('scan-page');
+    const scanDocumentBtn = document.getElementById('scan-document');
+    const iconList = document.getElementById('icon-list');
+    const emptyState = document.getElementById('empty');
+    const loadingState = document.getElementById('loading');
+    const stats = document.getElementById('stats');
+    const iconCount = document.getElementById('icon-count');
+    const visibleCount = document.getElementById('visible-count');
+    const filterSection = document.getElementById('filter-section');
+    const libraryFilter = document.getElementById('library-filter');
+    const searchInput = document.getElementById('search-input');
+
+    let allIcons = [];
+
+    scanPageBtn.onclick = () => {
+      parent.postMessage({ pluginMessage: { type: 'scan-page' } }, '*');
+      showLoading();
+    };
+
+    scanDocumentBtn.onclick = () => {
+      parent.postMessage({ pluginMessage: { type: 'scan-document' } }, '*');
+      showLoading();
+    };
+
+    function showLoading() {
+      iconList.innerHTML = '';
+      emptyState.style.display = 'none';
+      loadingState.style.display = 'block';
+      stats.style.display = 'none';
+      filterSection.style.display = 'none';
+    }
+
+    libraryFilter.onchange = () => {
+      filterIcons();
+    };
+
+    searchInput.oninput = () => {
+      filterIcons();
+    };
+
+    function filterIcons() {
+      const selectedLibrary = libraryFilter.value;
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      const items = document.querySelectorAll('.icon-item');
+      let visibleItems = 0;
+
+      items.forEach(item => {
+        const itemLibrary = item.dataset.library;
+        const itemName = item.dataset.name;
+        const matchesLibrary = selectedLibrary === 'all' || itemLibrary === selectedLibrary;
+        const matchesSearch = !searchTerm || itemName.includes(searchTerm);
+
+        if (matchesLibrary && matchesSearch) {
+          item.style.display = '';
+          visibleItems++;
+        } else {
+          item.style.display = 'none';
+        }
+      });
+
+      visibleCount.textContent = visibleItems;
+    }
+
+    window.onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+
+      if (msg.type === 'scan-results') {
+        displayIcons(msg.icons);
+      }
+    };
+
+    function displayIcons(icons) {
+      loadingState.style.display = 'none';
+      allIcons = icons;
+
+      if (icons.length === 0) {
+        iconList.innerHTML = '';
+        emptyState.style.display = 'block';
+        emptyState.textContent = 'No icons found';
+        stats.style.display = 'none';
+        filterSection.style.display = 'none';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      stats.style.display = 'block';
+      filterSection.style.display = 'block';
+      iconCount.textContent = icons.length;
+      visibleCount.textContent = icons.length;
+
+      // Build library filter options
+      const libraries = new Set();
+      icons.forEach(icon => {
+        if (icon.library) {
+          libraries.add(icon.library);
+        }
+      });
+
+      libraryFilter.innerHTML = '<option value="all">All Libraries</option>';
+      Array.from(libraries).sort().forEach(lib => {
+        const option = document.createElement('option');
+        option.value = lib;
+        option.textContent = lib;
+        libraryFilter.appendChild(option);
+      });
+
+      // Sort icons by library name, then by name
+      const sortedIcons = icons.sort((a, b) => {
+        const libA = a.library || 'ZZZ';
+        const libB = b.library || 'ZZZ';
+        if (libA !== libB) {
+          return libA.localeCompare(libB);
+        }
+        return a.name.localeCompare(b.name);
+      });
+
+      iconList.innerHTML = sortedIcons.map(icon => `
+        <div class="icon-item" data-id="${icon.id}" data-library="${escapeHtml(icon.library || '')}" data-name="${escapeHtml(icon.name.toLowerCase())}">
+          <div class="icon-name">
+            ${escapeHtml(icon.name)}
+            ${icon.library ? `<span class="library-badge ${icon.linkedFrom?.isRemote ? 'remote' : 'local'}">${escapeHtml(icon.library)}</span>` : ''}
+          </div>
+          <div class="icon-details">
+            <div class="icon-detail-row">
+              <span class="icon-label">Type:</span>
+              <span>${escapeHtml(icon.type)}</span>
+            </div>
+            <div class="icon-detail-row">
+              <span class="icon-label">Size:</span>
+              <span>${icon.width} × ${icon.height}</span>
+            </div>
+            <div class="icon-detail-row">
+              <span class="icon-label">Page:</span>
+              <span>${escapeHtml(icon.page)}</span>
+            </div>
+            ${icon.parent ? `
+            <div class="icon-detail-row">
+              <span class="icon-label">Parent:</span>
+              <span>${escapeHtml(icon.parent)}</span>
+            </div>
+            ` : ''}
+          </div>
+          ${icon.linkedFrom ? `
+          <div class="linked-from">
+            <span class="linked-from-label">Library:</span> ${escapeHtml(icon.linkedFrom.library)}
+            <br>
+            <span class="linked-from-label">Main Component:</span> ${escapeHtml(icon.linkedFrom.name)}
+            <br>
+            <button class="link-button secondary" data-main-component-id="${icon.linkedFrom.id}">Open Main Component</button>
+            <button class="link-button copy" data-link="${icon.linkedFrom.link}">Copy Link</button>
+          </div>
+          ` : ''}
+          <div style="margin-top: 6px;">
+            <button class="link-button copy" data-link="${icon.link}">Copy Link</button>
+          </div>
+        </div>
+      `).join('');
+
+      // Add click handlers to select nodes (but not on buttons/links)
+      document.querySelectorAll('.icon-item').forEach(item => {
+        item.onclick = (e) => {
+          // Don't trigger selection if clicking on a button or link
+          if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.closest('a') || e.target.closest('button')) {
+            return;
+          }
+          const id = item.dataset.id;
+          parent.postMessage({ pluginMessage: { type: 'select-node', id: id } }, '*');
+        };
+      });
+
+      // Add main component navigation handlers
+      document.querySelectorAll('[data-main-component-id]').forEach(button => {
+        button.onclick = (e) => {
+          e.stopPropagation();
+          const mainComponentId = button.dataset.mainComponentId;
+          parent.postMessage({ pluginMessage: { type: 'select-node', id: mainComponentId } }, '*');
+        };
+      });
+
+      // Add copy link functionality
+      document.querySelectorAll('.link-button.copy').forEach(button => {
+        button.onclick = async (e) => {
+          e.stopPropagation();
+          const link = button.dataset.link;
+          try {
+            await navigator.clipboard.writeText(link);
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            button.classList.add('copied');
+            setTimeout(() => {
+              button.textContent = originalText;
+              button.classList.remove('copied');
+            }, 2000);
+          } catch (err) {
+            console.error('Failed to copy:', err);
+            button.textContent = 'Failed';
+            setTimeout(() => {
+              button.textContent = 'Copy Link';
+            }, 2000);
+          }
+        };
+      });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
