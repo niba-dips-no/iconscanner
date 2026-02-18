@@ -87,6 +87,64 @@
       outline: none;
       border-color: #0d99ff;
     }
+    .color-filter {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .color-filter-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #666;
+      margin-right: 2px;
+    }
+    .color-swatch {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      padding: 0;
+      background: none;
+      transition: border-color 0.15s;
+    }
+    .color-swatch:hover {
+      border-color: #999;
+    }
+    .color-swatch.active {
+      border-color: #0d99ff;
+      box-shadow: 0 0 0 1px #0d99ff;
+    }
+    .color-swatch-all {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background: #f0f0f0;
+      color: #333;
+      cursor: pointer;
+      width: auto;
+      height: auto;
+    }
+    .color-swatch-all.active {
+      border-color: #0d99ff;
+      background: #e3f2fd;
+      color: #0d99ff;
+    }
+    .icon-colors {
+      display: flex;
+      gap: 3px;
+      margin-top: 4px;
+    }
+    .icon-color-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.15);
+    }
     .icon-list {
       display: flex;
       flex-direction: column;
@@ -233,6 +291,7 @@
 
   <div id="filter-section" class="filter-section" style="display: none;">
     <input type="text" id="search-input" class="search-input" placeholder="Search icons by name...">
+    <div id="color-filter" class="color-filter" style="display: none;"></div>
     <label for="library-filter">Filter by Library:</label>
     <select id="library-filter">
       <option value="all">All Libraries</option>
@@ -262,8 +321,10 @@
     const filterSection = document.getElementById('filter-section');
     const libraryFilter = document.getElementById('library-filter');
     const searchInput = document.getElementById('search-input');
+    const colorFilter = document.getElementById('color-filter');
 
     let allIcons = [];
+    let selectedColor = 'all';
 
     scanPageBtn.onclick = () => {
       parent.postMessage({ pluginMessage: { type: 'scan-page' } }, '*');
@@ -300,10 +361,12 @@
       items.forEach(item => {
         const itemLibrary = item.dataset.library;
         const itemName = item.dataset.name;
+        const itemColors = item.dataset.colors || '';
         const matchesLibrary = selectedLibrary === 'all' || itemLibrary === selectedLibrary;
         const matchesSearch = !searchTerm || itemName.includes(searchTerm);
+        const matchesColor = selectedColor === 'all' || itemColors.split(',').includes(selectedColor);
 
-        if (matchesLibrary && matchesSearch) {
+        if (matchesLibrary && matchesSearch && matchesColor) {
           item.style.display = '';
           visibleItems++;
         } else {
@@ -357,6 +420,38 @@
         libraryFilter.appendChild(option);
       });
 
+      // Build color filter swatches
+      const allColors = new Map();
+      icons.forEach(icon => {
+        if (icon.colors) {
+          icon.colors.forEach(c => {
+            allColors.set(c, (allColors.get(c) || 0) + 1);
+          });
+        }
+      });
+
+      selectedColor = 'all';
+      if (allColors.size > 0) {
+        colorFilter.style.display = 'flex';
+        const sortedColors = Array.from(allColors.entries()).sort((a, b) => b[1] - a[1]);
+        colorFilter.innerHTML = '<span class="color-filter-label">Colors:</span>' +
+          '<button class="color-swatch-all active" data-color="all">All</button>' +
+          sortedColors.map(([hex, count]) =>
+            `<button class="color-swatch" data-color="${hex}" style="background-color: ${hex};" title="${hex} (${count})"></button>`
+          ).join('');
+
+        colorFilter.onclick = (e) => {
+          const btn = e.target.closest('[data-color]');
+          if (!btn) return;
+          selectedColor = btn.dataset.color;
+          colorFilter.querySelectorAll('.color-swatch, .color-swatch-all').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          filterIcons();
+        };
+      } else {
+        colorFilter.style.display = 'none';
+      }
+
       // Sort icons by library name, then by name
       const sortedIcons = icons.sort((a, b) => {
         const libA = a.library || 'ZZZ';
@@ -368,7 +463,7 @@
       });
 
       iconList.innerHTML = sortedIcons.map(icon => `
-        <div class="icon-item" data-id="${icon.id}" data-library="${escapeHtml(icon.library || '')}" data-name="${escapeHtml(icon.name.toLowerCase())}">
+        <div class="icon-item" data-id="${icon.id}" data-library="${escapeHtml(icon.library || '')}" data-name="${escapeHtml(icon.name.toLowerCase())}" data-colors="${(icon.colors || []).join(',')}">
           <div class="icon-name">
             ${escapeHtml(icon.name)}
             ${icon.library ? `<span class="library-badge ${icon.linkedFrom?.isRemote ? 'remote' : 'local'}">${escapeHtml(icon.library)}</span>` : ''}
@@ -390,6 +485,12 @@
             <div class="icon-detail-row">
               <span class="icon-label">Parent:</span>
               <span>${escapeHtml(icon.parent)}</span>
+            </div>
+            ` : ''}
+            ${icon.colors && icon.colors.length > 0 ? `
+            <div class="icon-detail-row">
+              <span class="icon-label">Colors:</span>
+              <span class="icon-colors">${icon.colors.map(c => `<span class="icon-color-dot" style="background-color: ${c};" title="${c}"></span>`).join('')}</span>
             </div>
             ` : ''}
           </div>

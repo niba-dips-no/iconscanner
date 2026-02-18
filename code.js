@@ -58,7 +58,8 @@ async function scanForIcons(page) {
         height: Math.round(node.height),
         page: page.name,
         parent: parentName,
-        link: `https://www.figma.com/file/${figma.fileKey}?node-id=${encodeURIComponent(node.id)}`
+        link: `https://www.figma.com/file/${figma.fileKey}?node-id=${encodeURIComponent(node.id)}`,
+        colors: extractColors(node, 5)
       };
 
       // If it's an instance, get the main component information
@@ -109,6 +110,51 @@ async function scanForIcons(page) {
 
   await traverse(page);
   return icons;
+}
+
+// Convert Figma RGB (0-1) to hex string
+function rgbToHex(color) {
+  const r = Math.round(color.r * 255).toString(16).padStart(2, '0');
+  const g = Math.round(color.g * 255).toString(16).padStart(2, '0');
+  const b = Math.round(color.b * 255).toString(16).padStart(2, '0');
+  return '#' + r + g + b;
+}
+
+// Extract unique solid colors from a node and its children
+function extractColors(node, maxColors) {
+  const colors = new Set();
+
+  function collect(n) {
+    if (colors.size >= maxColors) return;
+
+    const fills = n.fills;
+    if (fills && Array.isArray(fills)) {
+      for (const fill of fills) {
+        if (fill.type === 'SOLID' && fill.visible !== false && fill.color) {
+          colors.add(rgbToHex(fill.color));
+        }
+      }
+    }
+
+    const strokes = n.strokes;
+    if (strokes && Array.isArray(strokes)) {
+      for (const stroke of strokes) {
+        if (stroke.type === 'SOLID' && stroke.visible !== false && stroke.color) {
+          colors.add(rgbToHex(stroke.color));
+        }
+      }
+    }
+
+    if ('children' in n) {
+      for (const child of n.children) {
+        if (colors.size >= maxColors) return;
+        collect(child);
+      }
+    }
+  }
+
+  collect(node);
+  return Array.from(colors).slice(0, maxColors);
 }
 
 // Function to determine if a node is likely an icon
